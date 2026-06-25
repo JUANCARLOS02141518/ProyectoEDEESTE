@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Control de ordenes por brigada</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Control operativo</p>
+          <h1>Ordenes por brigada</h1>
+          <p class="subhead">Gestion de NIC, estados y despacho diario para brigadas electricas.</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="panel-buttons">
+            <button class="button primary" id="toggleOrderPanel" type="button" aria-expanded="false" aria-controls="newOrderDialog">Nueva orden</button>
+
+            <button class="button secondary" id="toggleFilterPanel" type="button" aria-expanded="false">Filtros e historial</button>
+          </div>
+          <div class="control-buttons">
+            <button class="button secondary" id="clearFiltersButton" type="button">Limpiar filtros</button>
+            <button class="button primary" id="exportPdfButton" type="button">Exportar PDF diario</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="summary-grid" id="summaryGrid" aria-label="Resumen general"></section>
+
+      <main class="work-layout">
+        <!-- Panel de “Nueva orden” movido a modal -->
+        <section class="tool-panel entry-panel collapsed" id="orderPanel" aria-labelledby="newOrderTitle" hidden></section>
+
+
+        <!-- Filtros movidos a modal -->
+        <section class="tool-panel filter-panel collapsed" id="filterPanel" aria-labelledby="filtersTitle" hidden></section>
+
+
+      </main>
+
+      <section class="dashboard-section" aria-labelledby="dashboardTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Tablero</p>
+            <h2 id="dashboardTitle">Brigadas</h2>
+          </div>
+          <span id="brigadeCountLabel" class="muted-label"></span>
+        </div>
+        <div class="brigade-grid" id="brigadeGrid"></div>
+      </section>
+
+      <section class="orders-section" aria-labelledby="ordersTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Ordenes</p>
+            <h2 id="ordersTitle">Historial y acciones</h2>
+          </div>
+          <span class="muted-label">El estado Pendiente se aplica automaticamente tras 2 horas en Generada.</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>NIC</th>
+                <th>Brigada</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th>Creada</th>
+                <th>Generada</th>
+                <th>Despachada</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="ordersBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="emptyState" hidden>No hay ordenes con los filtros actuales.</div>
+      </section>
+    </div>
+
+    <dialog class="brigade-dialog" id="brigadeDialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">Detalle de brigada</p>
+          <h2 id="dialogTitle"></h2>
+        </div>
+        <button class="icon-button" id="closeDialogButton" type="button" aria-label="Cerrar">X</button>
+      </div>
+      <div id="dialogBody"></div>
+    </dialog>
+
+    <dialog class="new-order-dialog" id="newOrderDialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">Registro</p>
+          <h2 id="newOrderDialogTitle">Nueva orden</h2>
+        </div>
+        <button class="icon-button" id="closeNewOrderDialogButton" type="button" aria-label="Cerrar">X</button>
+      </div>
+
+      <div id="newOrderDialogBody" class="panel-content">
+        <div class="state-pill waiting">Inicial: En espera</div>
+
+        <form id="orderForm" class="order-form">
+          <label>
+            <span>NIC</span>
+            <input id="nicInput" name="nic" type="text" autocomplete="off" placeholder="Ej. 123456789" required>
+          </label>
+
+          <label>
+            <span>Brigada</span>
+            <select id="brigadeSelect" name="brigade" required></select>
+          </label>
+
+          <label>
+            <span>Tipo de orden</span>
+            <select id="typeSelect" name="type" required></select>
+          </label>
+
+          <label class="full">
+            <span>Observacion</span>
+            <textarea id="noteInput" name="note" rows="3" placeholder="Opcional"></textarea>
+          </label>
+
+          <button class="button primary full" type="submit">Agregar en espera</button>
+          <p class="form-message" id="formMessage" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </dialog>
+
+    <dialog class="new-order-dialog" id="filterDialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">Consulta</p>
+          <h2 id="filterDialogTitle">Filtros e historial</h2>
+        </div>
+        <button class="icon-button" id="closeFilterDialogButton" type="button" aria-label="Cerrar">X</button>
+      </div>
+
+      <div id="filterDialogBody" class="panel-content">
+        <div class="filters-grid">
+          <label>
+            <span>Buscar NIC</span>
+            <input id="searchInput" type="search" placeholder="NIC">
+          </label>
+
+          <label>
+            <span>Brigada</span>
+            <select id="filterBrigade"></select>
+          </label>
+
+          <label>
+            <span>Estado</span>
+            <select id="filterStatus"></select>
+          </label>
+
+          <label>
+            <span>Tipo</span>
+            <select id="filterType"></select>
+          </label>
+
+          <label>
+            <span>Fecha</span>
+            <input id="filterDate" type="date">
+          </label>
+
+          <button class="button secondary align-end" id="todayButton" type="button">Usar hoy</button>
+        </div>
+      </div>
+    </dialog>
+
+    <section class="print-report" id="printReport" aria-hidden="true"></section>
+
+
+    <script src="app.js"></script>
+
+  
+
+  </body>
+</html>
+
