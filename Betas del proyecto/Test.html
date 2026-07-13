@@ -1,0 +1,2126 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Control de ordenes por brigada</title>
+    <style>
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-soft: #f9fafb;
+  --text: #17202a;
+  --muted: #64748b;
+  --line: #d9e1ea;
+  --primary: #2457c5;
+  --primary-dark: #1d4499;
+  --danger: #c62828;
+  --waiting: #f2c94c;
+  --waiting-bg: #fff8db;
+  --generated: #2f80ed;
+  --generated-bg: #e8f1ff;
+  --dispatched: #219653;
+  --dispatched-bg: #e8f7ee;
+  --pending: #d32f2f;
+  --pending-bg: #fdecec;
+  --radius: 8px;
+  --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  width: min(1440px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 24px 0 40px;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 0 18px;
+}
+
+.topbar h1,
+.section-heading h2,
+.dialog-head h2 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.topbar h1 {
+  font-size: 34px;
+  line-height: 1.1;
+}
+
+.subhead {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.button.is-active {
+  border-color: var(--primary);
+  background: var(--generated-bg);
+  color: var(--primary-dark);
+}
+
+.button {
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 9px 14px;
+  font-weight: 700;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.button.primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.button.primary:hover {
+  background: var(--primary-dark);
+}
+
+.button.secondary {
+  background: #fff;
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.button.secondary:hover {
+  border-color: #aeb9c6;
+}
+
+.button.warning {
+  background: var(--generated);
+  color: #fff;
+}
+
+.button.success {
+  background: var(--dispatched);
+  color: #fff;
+}
+
+.button.danger {
+  background: #fff;
+  border-color: #f0b5b5;
+  color: var(--danger);
+}
+
+.button.small {
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.button.full {
+  width: 100%;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin: 8px 0 18px;
+}
+
+.summary-card {
+  min-height: 96px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.summary-card strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.summary-card span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.summary-card.waiting {
+  border-left: 5px solid var(--waiting);
+}
+
+.summary-card.generated {
+  border-left: 5px solid var(--generated);
+}
+
+.summary-card.dispatched {
+  border-left: 5px solid var(--dispatched);
+}
+
+.summary-card.pending {
+  border-left: 5px solid var(--pending);
+}
+
+.work-layout {
+  display: block;
+  margin: 0 0 16px;
+}
+
+.work-layout[hidden],
+.tool-panel[hidden] {
+  display: none !important;
+}
+
+.work-layout .tool-panel + .tool-panel {
+  margin-top: 12px;
+}
+
+.tool-panel.is-open {
+  animation: panelDrop 0.18s ease-out;
+}
+
+@keyframes panelDrop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.entry-panel .order-form {
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  align-items: start;
+}
+
+.order-form .full,
+.order-form button.full,
+.form-message {
+  grid-column: 1 / -1;
+}
+
+.tool-panel,
+.dashboard-section,
+.orders-section {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.tool-panel {
+  padding: 16px;
+}
+
+.entry-panel {
+  position: static;
+}
+
+.section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.section-heading.compact {
+  margin-bottom: 12px;
+}
+
+.muted-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.order-form,
+.filters-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.order-form label,
+.filters-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.order-form span,
+.filters-grid span {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--text);
+  padding: 10px 11px;
+  outline: none;
+}
+
+textarea {
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(36, 87, 197, 0.12);
+}
+
+.form-message {
+  min-height: 20px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.form-message.error {
+  color: var(--danger);
+}
+
+.form-message.ok {
+  color: var(--dispatched);
+}
+
+.filters-grid {
+  grid-template-columns: minmax(160px, 1.2fr) repeat(4, minmax(130px, 1fr)) auto;
+  align-items: end;
+}
+
+.align-end {
+  align-self: end;
+}
+
+.dashboard-section,
+.orders-section {
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.brigade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 12px;
+}
+
+.brigade-card {
+  display: grid;
+  gap: 12px;
+  min-height: 260px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  padding: 14px;
+}
+
+.brigade-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.brigade-name {
+  margin: 0;
+  font-size: 18px;
+}
+
+.daily-total {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.status-counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.status-count {
+  min-height: 60px;
+  border-radius: var(--radius);
+  padding: 8px;
+  text-align: center;
+}
+
+.status-count strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.status-count span {
+  display: block;
+  margin-top: 5px;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.status-count.waiting,
+.state-pill.waiting {
+  background: var(--waiting-bg);
+  color: #7a5a00;
+}
+
+.status-count.generated,
+.state-pill.generated {
+  background: var(--generated-bg);
+  color: #174ea6;
+}
+
+.status-count.dispatched,
+.state-pill.dispatched {
+  background: var(--dispatched-bg);
+  color: #146c38;
+}
+
+.status-count.pending,
+.state-pill.pending {
+  background: var(--pending-bg);
+  color: #a11b1b;
+}
+
+.state-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.active-list {
+  display: grid;
+  gap: 6px;
+  min-height: 62px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.active-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 7px 8px;
+  font-size: 12px;
+}
+
+.active-list .nic {
+  font-weight: 800;
+}
+
+.active-list .time {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.empty-mini {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.card-actions,
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#ordersTableWrap {
+   overflow-x: auto;
+   overflow-y: auto;
+   max-height: 420px;
+   border: 1px solid var(--line);
+   border-radius: var(--radius);
+ }
+
+ #ordersTableWrap.expanded {
+   max-height: 70vh;
+ }
+ 
+ table {
+   width: 100%;
+   min-width: 1040px;
+   border-collapse: collapse;
+   background: #fff;
+ }
+ .floating-status-wrapper {
+   position: fixed;
+   right: 18px;
+   bottom: 18px;
+   display: flex;
+   flex-direction: column;
+   gap: 8px;
+   z-index: 900;
+ }
+ .floating-status {
+   min-width: 140px;
+   padding: 10px 14px;
+   border-radius: 999px;
+   background: var(--surface);
+   border: 1px solid var(--line);
+   box-shadow: 0 10px 30px rgba(15,23,42,0.12);
+   font-weight: 800;
+   color: var(--text);
+   text-align: center;
+ }
+ .floating-status.waiting { background: var(--waiting-bg); color: #7a5a00; }
+ .floating-status.pending { background: var(--pending-bg); color: #a11b1b; }
+ .scroll-top-bubble {
+   position: fixed;
+   left: 50%;
+   transform: translateX(-50%);
+   bottom: 18px;
+   width: 46px;
+   height: 46px;
+   border-radius: 50%;
+   background: var(--primary);
+   color: #fff;
+   display: none;
+   align-items: center;
+   justify-content: center;
+   border: none;
+   box-shadow: 0 10px 30px rgba(15,23,42,0.18);
+   z-index: 1000;
+   font-size: 18px;
+ }
+ .menu-cell { position: relative; }
+ .menu-trigger {
+   background: transparent;
+   border: none;
+   font-size: 18px;
+   line-height: 1;
+   width: 28px;
+   height: 28px;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   border-radius: 6px;
+   color: var(--muted);
+ }
+ .menu-trigger:hover { background: rgba(0,0,0,0.04); color: var(--text); }
+ .menu-popover {
+   position: absolute;
+   left: calc(100% + 6px);
+   top: 50%;
+   transform: translateY(-50%);
+   min-width: 140px;
+   background: var(--surface);
+   border: 1px solid var(--line);
+   border-radius: 10px;
+   box-shadow: 0 10px 25px rgba(15,23,42,0.14);
+   padding: 6px;
+   display: none;
+   z-index: 999;
+ }
+ .menu-popover.open { display: block; }
+ .menu-popover button {
+   display: block;
+   width: 100%;
+   text-align: left;
+   background: transparent;
+   border: none;
+   padding: 10px 8px;
+   font-weight: 700;
+ }
+ .menu-popover button:hover { background: rgba(0,0,0,0.04); }
+ .nic-cell label input[type="checkbox"] { display: none; }
+ .nic-cell .dot {
+   width: 14px;
+   height: 14px;
+   border-radius: 50%;
+   border: 1px solid var(--line);
+   display: inline-block;
+   background: transparent;
+ }
+ .nic-cell label input[type="checkbox"]:checked + .dot {
+   background: var(--pending);
+   border-color: var(--pending);
+ }
+ th,
+ td {
+  border-bottom: 1px solid var(--line);
+  padding: 10px;
+  text-align: left;
+  vertical-align: middle;
+  font-size: 13px;
+}
+
+tbody tr.selected-row {
+  background: rgba(211, 47, 47, 0.08);
+}
+
+tbody tr:hover {
+  background: #fafafa;
+}
+
+.nic-cell {
+  font-weight: 800;
+}
+
+.note-line {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.empty-state {
+  margin-top: 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  padding: 18px;
+  color: var(--muted);
+  text-align: center;
+  font-weight: 700;
+}
+
+.brigade-dialog {
+  width: min(980px, calc(100% - 30px));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+}
+
+.brigade-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.dialog-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--line);
+  padding: 16px;
+}
+
+#dialogBody {
+  padding: 16px;
+}
+
+.icon-button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--text);
+  font-weight: 800;
+}
+
+.dialog-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.print-report {
+  display: none;
+  background: #fff;
+  color: #111827;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.print-report h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+
+.print-report h2 {
+  margin: 24px 0 8px;
+  font-size: 16px;
+}
+
+.print-report .report-meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.print-report .report-box {
+  border: 1px solid #d1d5db;
+  padding: 10px;
+}
+
+.print-report table {
+  min-width: 0;
+}
+
+.print-report th,
+.print-report td {
+  padding: 6px;
+  font-size: 11px;
+}
+
+body.printing .print-report {
+  display: block;
+}
+
+@media (max-width: 1180px) {
+  .summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .work-layout,
+  .filters-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .entry-panel .order-form {
+    grid-template-columns: 1fr;
+  }
+
+  .align-end {
+    align-self: stretch;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    width: min(100% - 20px, 1440px);
+    padding-top: 12px;
+  }
+
+  .topbar,
+  .section-heading,
+  .brigade-card-head {
+    flex-direction: column;
+  }
+
+  .topbar h1 {
+    font-size: 27px;
+  }
+
+  .topbar-actions,
+  .card-actions,
+  .row-actions {
+    width: 100%;
+  }
+
+  .topbar-actions .button,
+  .card-actions .button,
+  .row-actions .button {
+    flex: 1 1 auto;
+  }
+
+  .summary-grid,
+  .dialog-summary,
+  .status-counts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .muted-label,
+  .daily-total {
+    text-align: left;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-report,
+  .print-report * {
+    visibility: visible;
+  }
+
+  .print-report {
+    display: block !important;
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    padding: 0;
+  }
+}
+
+</style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Control operativo</p>
+          <h1>Ordenes por brigada</h1>
+          <p class="subhead">Gestion de NIC, estados y despacho diario para brigadas electricas.</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="button secondary" id="toggleRegisterButton" type="button" aria-controls="registerPanel" aria-expanded="false">Registro</button>
+          <button class="button secondary" id="toggleFiltersButton" type="button" aria-controls="filtersPanel" aria-expanded="false">Consulta</button>
+          <button class="button secondary" id="clearFiltersButton" type="button">Limpiar filtros</button>
+          <button class="button primary" id="exportPdfButton" type="button">Exportar PDF diario</button>
+        </div>
+      </header>
+
+      <section class="summary-grid" id="summaryGrid" aria-label="Resumen general"></section>
+
+      <main class="work-layout" id="toolsArea" hidden>
+        <section class="tool-panel entry-panel" id="registerPanel" aria-labelledby="newOrderTitle" hidden>
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">Registro</p>
+              <h2 id="newOrderTitle">Nueva orden</h2>
+            </div>
+            <span class="state-pill waiting">Inicial: En espera</span>
+          </div>
+
+          <form id="orderForm" class="order-form">
+            <label>
+              <span>NIC</span>
+              <input id="nicInput" name="nic" type="text" autocomplete="off" placeholder="Ej. 123456789" required>
+            </label>
+
+            <label>
+              <span>Brigada</span>
+              <select id="brigadeSelect" name="brigade" required></select>
+            </label>
+
+            <label>
+              <span>Tipo de orden</span>
+              <select id="typeSelect" name="type" required></select>
+            </label>
+
+            <label class="full">
+              <span>Observacion</span>
+              <textarea id="noteInput" name="note" rows="3" placeholder="Opcional"></textarea>
+            </label>
+
+            <button class="button primary full" type="submit">Agregar en espera</button>
+            <p class="form-message" id="formMessage" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <section class="tool-panel filter-panel" id="filtersPanel" aria-labelledby="filtersTitle" hidden>
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">Consulta</p>
+              <h2 id="filtersTitle">Filtros e historial</h2>
+            </div>
+            <span id="orderCountLabel" class="muted-label"></span>
+          </div>
+
+          <div class="filters-grid">
+            <label>
+              <span>Buscar NIC</span>
+              <input id="searchInput" type="search" placeholder="NIC">
+            </label>
+
+            <label>
+              <span>Brigada</span>
+              <select id="filterBrigade"></select>
+            </label>
+
+            <label>
+              <span>Estado</span>
+              <select id="filterStatus"></select>
+            </label>
+
+            <label>
+              <span>Tipo</span>
+              <select id="filterType"></select>
+            </label>
+
+            <label>
+              <span>Fecha</span>
+              <input id="filterDate" type="date">
+            </label>
+
+            <button class="button secondary align-end" id="todayButton" type="button">Usar hoy</button>
+          </div>
+        </section>
+      </main>
+
+      <section class="dashboard-section" aria-labelledby="dashboardTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Tablero</p>
+            <h2 id="dashboardTitle">Brigadas</h2>
+          </div>
+          <span id="brigadeCountLabel" class="muted-label"></span>
+        </div>
+        <div class="brigade-grid" id="brigadeGrid"></div>
+      </section>
+
+      <section class="orders-section" aria-labelledby="ordersTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Ordenes</p>
+            <h2 id="ordersTitle">Historial y acciones</h2>
+          </div>
+          <span class="muted-label">El estado Pendiente se aplica automaticamente tras 2 horas en Generada.</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="button secondary small" id="toggleHistoryButton" type="button">Desplegar</button>
+            <button class="button danger small" id="deleteAllButton" type="button">Eliminar Todas</button>
+          </div>
+        </div>
+        <div class="table-wrap" id="ordersTableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>NIC</th>
+                <th>Brigada</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th>Creada</th>
+                <th>Generada</th>
+                <th>Despachada</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="ordersBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="emptyState" hidden>No hay ordenes con los filtros actuales.</div>
+      </section>
+    </div>
+
+    <dialog class="brigade-dialog" id="brigadeDialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">Detalle de brigada</p>
+          <h2 id="dialogTitle"></h2>
+        </div>
+        <button class="icon-button" id="closeDialogButton" type="button" aria-label="Cerrar">X</button>
+      </div>
+      <div id="dialogBody"></div>
+    </dialog>
+
+    <dialog class="brigade-dialog" id="alertDialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">Alerta</p>
+          <h2 id="alertTitle">Aviso</h2>
+        </div>
+        <button class="icon-button" id="closeAlertButton" type="button" aria-label="Cerrar">X</button>
+      </div>
+      <div style="padding:16px;">
+        <p id="alertMessage"></p>
+        <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+          <button class="button primary" id="alertAcceptButton" type="button">Aceptar</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="brigade-dialog" id="statusDialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">Detalle</p>
+          <h2 id="statusDialogTitle">Detalle del conteo</h2>
+        </div>
+        <button class="icon-button" id="closeStatusDialogButton" type="button" aria-label="Cerrar">X</button>
+      </div>
+      <div id="statusDialogBody" style="padding:16px;"></div>
+    </dialog>
+
+    <div class="floating-status-wrapper" id="floatingStatusWrapper" hidden>
+      <div class="floating-status waiting" id="floatingWaiting"></div>
+      <div class="floating-status pending" id="floatingPending"></div>
+    </div>
+
+    <button class="scroll-top-bubble" id="scrollTopButton" type="button" aria-label="Ir arriba">↑</button>
+
+    <section class="print-report" id="printReport" aria-hidden="true"></section>
+
+    <script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "ordenesBrigadas.v1";
+  var TWO_HOURS = 2 * 60 * 60 * 1000;
+
+  var BRIGADES = [
+    "BL1P-5A1",
+    "BL1P-5A2",
+    "BL1P-5A3",
+    "BL1P-5A4",
+    "BL1P-5A5",
+    "BL1P-5A6",
+    "BL1P-5A7",
+    "BL1P-5A8",
+    "BL1P-5A9",
+    "BL1P-5A10",
+    "BL1P-5A11",
+    "BL1P-5A12",
+    "BL1P-5A13",
+    "BL1P-5A14",
+    "BL1P-5A15",
+    "BL1P-5A16",
+    "BL1P-5A17",
+    "BL1P-5A18",
+    "BL1P-5A19",
+    "BL1UP-SP50",
+    "BL1UP-SP51",
+    "BL1UP-SP52",
+    "BL1UP-SP53",
+    "BL1UP-SP54",
+    "BL1UP-SP55",
+    "BL2UP-SP50",
+    "BL2UP-SP51",
+    "BL2UP-SP52",
+    "BL2UP-SP53"
+  ];
+
+  var STATUSES = {
+    waiting: { label: "En espera", className: "waiting" },
+    generated: { label: "Generada", className: "generated" },
+    dispatched: { label: "Despachada", className: "dispatched" },
+    pending: { label: "Pendiente", className: "pending" }
+  };
+
+  var STATUS_ORDER = ["waiting", "generated", "pending", "dispatched"];
+
+  var TYPES = [
+    "Regular",
+    "Inspeccion por barrido",
+    "Anomalia automatica del sistema",
+    "Otra"
+  ];
+
+  var orders = loadOrders();
+  var selectedBrigade = "";
+
+  var els = {
+    toolsArea: document.getElementById("toolsArea"),
+    toggleRegisterButton: document.getElementById("toggleRegisterButton"),
+    toggleFiltersButton: document.getElementById("toggleFiltersButton"),
+    registerPanel: document.getElementById("registerPanel"),
+    filtersPanel: document.getElementById("filtersPanel"),
+    summaryGrid: document.getElementById("summaryGrid"),
+    orderForm: document.getElementById("orderForm"),
+    nicInput: document.getElementById("nicInput"),
+    brigadeSelect: document.getElementById("brigadeSelect"),
+    typeSelect: document.getElementById("typeSelect"),
+    noteInput: document.getElementById("noteInput"),
+    formMessage: document.getElementById("formMessage"),
+    searchInput: document.getElementById("searchInput"),
+    filterBrigade: document.getElementById("filterBrigade"),
+    filterStatus: document.getElementById("filterStatus"),
+    filterType: document.getElementById("filterType"),
+    filterDate: document.getElementById("filterDate"),
+    todayButton: document.getElementById("todayButton"),
+    clearFiltersButton: document.getElementById("clearFiltersButton"),
+    exportPdfButton: document.getElementById("exportPdfButton"),
+    orderCountLabel: document.getElementById("orderCountLabel"),
+    brigadeCountLabel: document.getElementById("brigadeCountLabel"),
+    brigadeGrid: document.getElementById("brigadeGrid"),
+    ordersBody: document.getElementById("ordersBody"),
+    ordersTableWrap: document.getElementById("ordersTableWrap"),
+    deleteAllButton: document.getElementById("deleteAllButton"),
+    emptyState: document.getElementById("emptyState"),
+    brigadeDialog: document.getElementById("brigadeDialog"),
+    dialogTitle: document.getElementById("dialogTitle"),
+    dialogBody: document.getElementById("dialogBody"),
+    closeDialogButton: document.getElementById("closeDialogButton"),
+    alertDialog: document.getElementById("alertDialog"),
+    alertTitle: document.getElementById("alertTitle"),
+    alertMessage: document.getElementById("alertMessage"),
+    alertAcceptButton: document.getElementById("alertAcceptButton"),
+    closeAlertButton: document.getElementById("closeAlertButton"),
+    statusDialog: document.getElementById("statusDialog"),
+    statusDialogTitle: document.getElementById("statusDialogTitle"),
+    statusDialogBody: document.getElementById("statusDialogBody"),
+    closeStatusDialogButton: document.getElementById("closeStatusDialogButton"),
+    floatingStatusWrapper: document.getElementById("floatingStatusWrapper"),
+    floatingWaiting: document.getElementById("floatingWaiting"),
+    floatingPending: document.getElementById("floatingPending"),
+    scrollTopButton: document.getElementById("scrollTopButton"),
+    toggleHistoryButton: document.getElementById("toggleHistoryButton"),
+    printReport: document.getElementById("printReport")
+  };
+
+  function init() {
+    fillSelects();
+    bindEvents();
+    expireGeneratedOrders();
+    render();
+    updateFloatingStatusBubbles(countByStatus(orders));
+
+    setInterval(function () {
+      if (expireGeneratedOrders()) {
+        render();
+      }
+    }, 60000);
+  }
+
+  function fillSelects() {
+    els.brigadeSelect.innerHTML = BRIGADES.map(optionMarkup).join("");
+    els.filterBrigade.innerHTML = '<option value="">Todas</option>' + BRIGADES.map(optionMarkup).join("");
+    els.filterStatus.innerHTML =
+      '<option value="">Todos</option>' +
+      STATUS_ORDER.map(function (key) {
+        return '<option value="' + key + '">' + STATUSES[key].label + "</option>";
+      }).join("");
+    els.typeSelect.innerHTML = TYPES.map(optionMarkup).join("");
+    els.filterType.innerHTML = '<option value="">Todos</option>' + TYPES.map(optionMarkup).join("");
+  }
+
+  function bindEvents() {
+    els.toggleRegisterButton.addEventListener("click", function () {
+      toggleToolPanel("register");
+    });
+    els.toggleFiltersButton.addEventListener("click", function () {
+      toggleToolPanel("filters");
+    });
+    els.orderForm.addEventListener("submit", handleOrderSubmit);
+    els.searchInput.addEventListener("input", render);
+    els.filterBrigade.addEventListener("change", render);
+    els.filterStatus.addEventListener("change", render);
+    els.filterType.addEventListener("change", render);
+    els.filterDate.addEventListener("change", render);
+    els.todayButton.addEventListener("click", function () {
+      els.filterDate.value = getDateKey(new Date());
+      render();
+    });
+    els.clearFiltersButton.addEventListener("click", clearFilters);
+    els.exportPdfButton.addEventListener("click", exportDailyPdf);
+    els.brigadeGrid.addEventListener("click", handleBrigadeClick);
+    els.ordersBody.addEventListener("click", handleOrderAction);
+    els.deleteAllButton.addEventListener("click", deleteAllOrders);
+    els.dialogBody.addEventListener("click", handleOrderAction);
+    if (els.toggleHistoryButton) {
+      els.toggleHistoryButton.addEventListener('click', function () {
+        var wrap = els.ordersTableWrap;
+        if (!wrap) return;
+        if (wrap.classList.contains('expanded')) {
+          wrap.classList.remove('expanded');
+          els.toggleHistoryButton.textContent = 'Desplegar';
+        } else {
+          wrap.classList.add('expanded');
+          els.toggleHistoryButton.textContent = 'Comprimir';
+        }
+      });
+    }
+    if (els.alertAcceptButton) {
+      els.alertAcceptButton.addEventListener('click', function () { els.alertDialog.close(); });
+    }
+    if (els.closeAlertButton) {
+      els.closeAlertButton.addEventListener('click', function () { els.alertDialog.close(); });
+    }
+    if (els.closeDialogButton) {
+      els.closeDialogButton.addEventListener('click', function () { els.brigadeDialog.close(); });
+    }
+    if (els.closeStatusDialogButton) {
+      els.closeStatusDialogButton.addEventListener('click', function () { els.statusDialog.close(); });
+    }
+    if (els.scrollTopButton) {
+      els.scrollTopButton.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+      window.addEventListener('scroll', updateScrollTopVisibility);
+      updateScrollTopVisibility();
+    }
+    if (els.summaryGrid) {
+      els.summaryGrid.addEventListener('click', function (e) {
+        var card = e.target.closest('.summary-card');
+        if (!card) return;
+        openStatusDialog(card.getAttribute('data-status') || card.textContent.trim().split('\n')[0].trim());
+      });
+    }
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest || (!e.target.closest('[data-menu-id]') && !e.target.closest('.menu-popover'))) {
+        document.querySelectorAll('.menu-popover.open').forEach(function (p) { p.classList.remove('open'); });
+      }
+    });
+    window.addEventListener("afterprint", function () {
+      document.body.classList.remove("printing");
+      els.printReport.setAttribute("aria-hidden", "true");
+    });
+  }
+
+  function toggleToolPanel(panelName) {
+    var panel = panelName === "register" ? els.registerPanel : els.filtersPanel;
+    if (!panel.hidden) {
+      closeToolPanels();
+      return;
+    }
+    openToolPanel(panelName);
+  }
+
+  function openToolPanel(panelName) {
+    var isRegister = panelName === "register";
+    els.toolsArea.hidden = false;
+    els.registerPanel.hidden = !isRegister;
+    els.filtersPanel.hidden = isRegister;
+    els.registerPanel.classList.toggle("is-open", isRegister);
+    els.filtersPanel.classList.toggle("is-open", !isRegister);
+    syncToolButtons(panelName);
+  }
+
+  function closeToolPanels() {
+    els.toolsArea.hidden = true;
+    els.registerPanel.hidden = true;
+    els.filtersPanel.hidden = true;
+    els.registerPanel.classList.remove("is-open");
+    els.filtersPanel.classList.remove("is-open");
+    syncToolButtons("");
+  }
+
+  function syncToolButtons(activePanel) {
+    var registerActive = activePanel === "register";
+    var filtersActive = activePanel === "filters";
+    els.toggleRegisterButton.classList.toggle("is-active", registerActive);
+    els.toggleFiltersButton.classList.toggle("is-active", filtersActive);
+    els.toggleRegisterButton.setAttribute("aria-expanded", String(registerActive));
+    els.toggleFiltersButton.setAttribute("aria-expanded", String(filtersActive));
+  }
+
+  function handleOrderSubmit(event) {
+    event.preventDefault();
+
+    var nic = normalizeNic(els.nicInput.value);
+    var brigade = els.brigadeSelect.value;
+    var type = els.typeSelect.value;
+    var note = els.noteInput.value.trim();
+
+    if (!nic) {
+      showMessage("Debes escribir un NIC.", "error");
+      return;
+    }
+
+    if (nic.length !== 7) {
+      showMessage("El NIC debe tener exactamente 7 caracteres.", "error");
+      return;
+    }
+
+    var existing = orders.find(function (order) { return order.nic === nic; });
+    if (existing) {
+      els.alertTitle.textContent = 'NIC duplicado';
+      els.alertMessage.textContent = 'El NIC ' + nic + ' ya existe y fue asignado a la brigada ' + existing.brigade + '.';
+      els.alertDialog.showModal();
+      return;
+    }
+
+    var now = new Date();
+    var nowIso = now.toISOString();
+    var order = {
+      id: makeId(),
+      nic: nic,
+      brigade: brigade,
+      type: type,
+      status: "waiting",
+      createdAt: nowIso,
+      generatedAt: "",
+      pendingAt: "",
+      dispatchedAt: "",
+      note: note,
+      selected: false,
+      history: [
+        {
+          status: "waiting",
+          at: nowIso,
+          label: "Orden registrada en espera"
+        }
+      ]
+    };
+
+    orders.push(order);
+    saveOrders();
+    els.nicInput.value = "";
+    els.noteInput.value = "";
+    showMessage("Orden " + nic + " agregada en espera para " + brigade + ".", "ok");
+    render();
+  }
+
+  function updateScrollTopVisibility() {
+    if (!els.scrollTopButton) {
+      return;
+    }
+    els.scrollTopButton.style.display = window.scrollY > 50 ? 'inline-flex' : 'none';
+  }
+
+  function handleBrigadeClick(event) {
+    var button = event.target.closest("button[data-brigade-action]");
+    if (!button) {
+      return;
+    }
+
+    var brigade = button.getAttribute("data-brigade");
+    var action = button.getAttribute("data-brigade-action");
+
+    if (action === "add") {
+      openToolPanel("register");
+      els.brigadeSelect.value = brigade;
+      els.nicInput.focus();
+      els.registerPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    if (action === "detail") {
+      openBrigadeDialog(brigade);
+    }
+  }
+
+  function handleOrderAction(event) {
+    var trigger = event.target.closest('[data-menu-id]');
+    if (trigger) {
+      var menuId = trigger.getAttribute('data-menu-id');
+      var pop = document.getElementById('menu-' + menuId);
+      if (pop) {
+        var wasOpen = pop.classList.contains('open');
+        document.querySelectorAll('.menu-popover.open').forEach(function (p) { p.classList.remove('open'); });
+        if (!wasOpen) pop.classList.add('open');
+      }
+      return;
+    }
+
+    var checkbox = event.target.closest('input[type="checkbox"][data-check-id]');
+    if (!checkbox) {
+      var label = event.target.closest('label');
+      if (label) {
+        checkbox = label.querySelector('input[type="checkbox"][data-check-id]');
+      }
+    }
+    if (checkbox) {
+      var row = checkbox.closest('tr');
+      if (row) {
+        var checkedOrder = findOrder(checkbox.getAttribute('data-check-id'));
+        if (checkedOrder) {
+          checkedOrder.selected = checkbox.checked;
+          saveOrders();
+        }
+        row.classList.toggle('selected-row', checkbox.checked);
+      }
+      return;
+    }
+
+    var editBtn = event.target.closest('[data-edit-id]');
+    if (editBtn) {
+      var editId = editBtn.getAttribute('data-edit-id');
+      var orderToEdit = findOrder(editId);
+      if (!orderToEdit) return;
+      var newNic = window.prompt('Editar NIC (actual: ' + orderToEdit.nic + ')', orderToEdit.nic);
+      if (!newNic) return;
+      newNic = normalizeNic(newNic);
+      if (newNic.length !== 7) {
+        els.alertTitle.textContent = 'Error';
+        els.alertMessage.textContent = 'El NIC debe tener exactamente 7 caracteres.';
+        els.alertDialog.showModal();
+        return;
+      }
+      if (orders.some(function (o) { return o.nic === newNic && o.id !== orderToEdit.id; })) {
+        els.alertTitle.textContent = 'Error';
+        els.alertMessage.textContent = 'Ese NIC ya existe en otra orden.';
+        els.alertDialog.showModal();
+        return;
+      }
+      orderToEdit.nic = newNic;
+      saveOrders();
+      render();
+      if (selectedBrigade && els.brigadeDialog.open) {
+        openBrigadeDialog(selectedBrigade, true);
+      }
+      return;
+    }
+
+    var button = event.target.closest('button[data-order-action]');
+    if (!button) return;
+
+    var order = findOrder(button.getAttribute('data-id'));
+    if (!order) return;
+
+    var action = button.getAttribute('data-order-action');
+
+    if (action === 'generate') moveToGenerated(order);
+    if (action === 'dispatch') moveToDispatched(order);
+    if (action === 'delete') { deleteOrder(order); return; }
+
+    saveOrders();
+    render();
+    if (selectedBrigade && els.brigadeDialog.open) {
+      openBrigadeDialog(selectedBrigade, true);
+    }
+  }
+
+  function moveToGenerated(order) {
+    if (order.status !== "waiting") {
+      return;
+    }
+
+    var now = new Date();
+    var nowIso = now.toISOString();
+    order.status = "generated";
+    order.generatedAt = nowIso;
+    order.pendingAt = "";
+    addHistory(order, "generated", nowIso, "Orden marcada como generada");
+  }
+
+  function moveToDispatched(order) {
+    if (order.status !== "generated" && order.status !== "pending") {
+      return;
+    }
+
+    var now = new Date();
+    var nowIso = now.toISOString();
+    order.status = "dispatched";
+    order.dispatchedAt = nowIso;
+    addHistory(order, "dispatched", nowIso, "Orden marcada como despachada");
+  }
+
+  function deleteOrder(order) {
+    var ok = window.confirm("Quieres eliminar el NIC " + order.nic + "? Esta accion solo corrige el registro local.");
+    if (!ok) {
+      return;
+    }
+
+    orders = orders.filter(function (item) {
+      return item.id !== order.id;
+    });
+    saveOrders();
+    render();
+
+    if (selectedBrigade && els.brigadeDialog.open) {
+      openBrigadeDialog(selectedBrigade, true);
+    }
+  }
+
+  function deleteAllOrders() {
+    if (!orders.length) {
+      showMessage("No hay ordenes en el historial para eliminar.", "error");
+      return;
+    }
+
+    var ok = window.confirm("¿Eliminar todas las ordenes del historial? Esta accion eliminara todo el historial de ordenes.");
+    if (!ok) {
+      return;
+    }
+
+    orders = [];
+    saveOrders();
+    render();
+    showMessage("Se eliminaron todas las ordenes del historial.", "ok");
+  }
+
+  function expireGeneratedOrders() {
+    var nowTime = Date.now();
+    var changed = false;
+
+    orders.forEach(function (order) {
+      if (order.status !== "generated" || !order.generatedAt) {
+        return;
+      }
+
+      var generatedTime = new Date(order.generatedAt).getTime();
+      if (Number.isNaN(generatedTime)) {
+        return;
+      }
+
+      if (nowTime - generatedTime >= TWO_HOURS) {
+        var now = new Date().toISOString();
+        order.status = "pending";
+        order.pendingAt = now;
+        addHistory(order, "pending", now, "Marcada pendiente automaticamente por superar 2 horas");
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      saveOrders();
+    }
+
+    return changed;
+  }
+
+  function render() {
+    var scrollX = window.scrollX || window.pageXOffset || 0;
+    var scrollY = window.scrollY || window.pageYOffset || 0;
+
+    expireGeneratedOrders();
+    renderSummary();
+    renderBrigades();
+    renderOrdersTable();
+
+    window.scrollTo({ top: scrollY, left: scrollX, behavior: "auto" });
+  }
+
+  function updateFloatingStatusBubbles(counts) {
+    var waitingCount = Number(counts && counts.waiting ? counts.waiting : 0);
+    var pendingCount = Number(counts && counts.pending ? counts.pending : 0);
+
+    if (!els.floatingStatusWrapper || !els.floatingWaiting || !els.floatingPending) {
+      return;
+    }
+
+    els.floatingStatusWrapper.hidden = false;
+    els.floatingWaiting.textContent = waitingCount + ' En espera';
+    els.floatingPending.textContent = pendingCount + ' Pendientes';
+  }
+
+  function renderSummary() {
+    var today = getDateKey(new Date());
+    var currentCounts = countByStatus(orders);
+    var createdToday = orders.filter(function (order) {
+      return hasSameDateKey(order.createdAt, today);
+    }).length;
+    var dispatchedToday = orders.filter(function (order) {
+      return order.dispatchedAt && hasSameDateKey(order.dispatchedAt, today);
+    }).length;
+
+    var cards = [
+      { label: "En espera", value: currentCounts.waiting, className: "waiting" },
+      { label: "Generadas", value: currentCounts.generated, className: "generated" },
+      { label: "Despachadas", value: currentCounts.dispatched, className: "dispatched" },
+      { label: "Pendientes", value: currentCounts.pending, className: "pending" },
+      { label: "Creadas hoy", value: createdToday, className: "" },
+      { label: "Despachadas hoy", value: dispatchedToday, className: "dispatched" }
+    ];
+
+    els.summaryGrid.innerHTML = cards.map(function (card) {
+      return (
+        '<article class="summary-card ' + card.className + '" data-status="' + card.label + '">' +
+        "<span>" + card.label + "</span>" +
+        "<strong>" + card.value + "</strong>" +
+        "</article>"
+      );
+    }).join("");
+
+    updateFloatingStatusBubbles(currentCounts);
+  }
+
+  function renderBrigades() {
+    var today = getDateKey(new Date());
+    els.brigadeCountLabel.textContent = BRIGADES.length + " brigadas precargadas";
+    els.brigadeGrid.innerHTML = BRIGADES.map(function (brigade) {
+      var brigadeOrders = orders.filter(function (order) {
+        return order.brigade === brigade;
+      });
+      var counts = countByStatus(brigadeOrders);
+      var todayTotal = brigadeOrders.filter(function (order) {
+        return hasSameDateKey(order.createdAt, today);
+      }).length;
+      var todayDispatched = brigadeOrders.filter(function (order) {
+        return order.dispatchedAt && hasSameDateKey(order.dispatchedAt, today);
+      }).length;
+      var active = brigadeOrders
+        .filter(function (order) { return order.status !== "dispatched"; })
+        .sort(compareOperationalPriority)
+        .slice(0, 4);
+
+      return (
+        '<article class="brigade-card">' +
+        '<div class="brigade-card-head">' +
+        "<h3 class=\"brigade-name\">" + brigade + "</h3>" +
+        '<div class="daily-total">Hoy: ' + todayTotal + "<br>Despachadas: " + todayDispatched + "</div>" +
+        "</div>" +
+        '<div class="status-counts">' +
+        statusCountMarkup("waiting", counts.waiting) +
+        statusCountMarkup("generated", counts.generated) +
+        statusCountMarkup("dispatched", counts.dispatched) +
+        statusCountMarkup("pending", counts.pending) +
+        "</div>" +
+        activeListMarkup(active) +
+        '<div class="card-actions">' +
+        '<button class="button primary small" type="button" data-brigade-action="add" data-brigade="' + brigade + '">Agregar</button>' +
+        '<button class="button secondary small" type="button" data-brigade-action="detail" data-brigade="' + brigade + '">Detalle</button>' +
+        "</div>" +
+        "</article>"
+      );
+    }).join("");
+  }
+
+  function renderOrdersTable() {
+    var filtered = getFilteredOrders();
+    var visibleOrders = filtered.slice(0, 10);
+    els.orderCountLabel.textContent = filtered.length + " ordenes encontradas";
+    els.emptyState.hidden = filtered.length > 0;
+
+    els.ordersBody.innerHTML = visibleOrders.map(orderRowMarkup).join("");
+
+    if (els.ordersTableWrap) {
+      els.ordersTableWrap.classList.toggle('compact', filtered.length > 10);
+    }
+  }
+
+  function openBrigadeDialog(brigade, keepOpen) {
+    selectedBrigade = brigade;
+    var brigadeOrders = orders
+      .filter(function (order) { return order.brigade === brigade; })
+      .sort(compareOperationalPriority);
+    var counts = countByStatus(brigadeOrders);
+
+    els.dialogTitle.textContent = brigade;
+    els.dialogBody.innerHTML =
+      '<div class="dialog-summary">' +
+      statusCountMarkup("waiting", counts.waiting) +
+      statusCountMarkup("generated", counts.generated) +
+      statusCountMarkup("dispatched", counts.dispatched) +
+      statusCountMarkup("pending", counts.pending) +
+      "</div>" +
+      '<div class="table-wrap">' +
+      "<table>" +
+      "<thead><tr><th>NIC</th><th>Tipo</th><th>Estado</th><th>Creada</th><th>Generada</th><th>Despachada</th><th>Acciones</th></tr></thead>" +
+      "<tbody>" +
+      (brigadeOrders.length
+        ? brigadeOrders.map(orderRowMarkupCompact).join("")
+        : '<tr><td colspan="7">Esta brigada no tiene ordenes registradas.</td></tr>') +
+      "</tbody></table></div>";
+
+    if (!keepOpen) {
+      els.brigadeDialog.showModal();
+    }
+  }
+
+  function getFilteredOrders() {
+    var search = normalizeNic(els.searchInput.value);
+    var brigade = els.filterBrigade.value;
+    var status = els.filterStatus.value;
+    var type = els.filterType.value;
+    var date = els.filterDate.value;
+
+    return orders
+      .filter(function (order) {
+        if (search && order.nic.indexOf(search) === -1) {
+          return false;
+        }
+        if (brigade && order.brigade !== brigade) {
+          return false;
+        }
+        if (status && order.status !== status) {
+          return false;
+        }
+        if (type && order.type !== type) {
+          return false;
+        }
+        if (date && !orderHasDate(order, date)) {
+          return false;
+        }
+        return true;
+      })
+      .sort(compareOperationalPriority);
+  }
+
+  function orderHasDate(order, date) {
+    return [
+      order.createdAt,
+      order.generatedAt,
+      order.pendingAt,
+      order.dispatchedAt
+    ].some(function (value) {
+      return value && getDateKey(value) === date;
+    });
+  }
+
+  function orderRowMarkup(order) {
+    return (
+      "<tr>" +
+      '<td class="nic-cell">' + escapeHtml(order.nic) + noteMarkup(order.note) + "</td>" +
+      "<td>" + escapeHtml(order.brigade) + "</td>" +
+      "<td>" + escapeHtml(order.type) + "</td>" +
+      "<td>" + statePillMarkup(order.status) + overdueMarkup(order) + "</td>" +
+      "<td>" + formatDateTime(order.createdAt) + "</td>" +
+      "<td>" + formatDateTime(order.generatedAt) + "</td>" +
+      "<td>" + formatDateTime(order.dispatchedAt) + "</td>" +
+      "<td>" + actionButtonsMarkup(order) + "</td>" +
+      "</tr>"
+    );
+  }
+
+  function orderRowMarkupCompact(order) {
+    var rowClass = order.selected ? ' class="selected-row"' : '';
+    return (
+      "<tr" + rowClass + ">" +
+      '<td class="nic-cell">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
+          '<span>' + escapeHtml(order.nic) + '</span>' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">' +
+              '<input type="checkbox" data-check-id="' + order.id + '"' + (order.selected ? ' checked' : '') + '>' +
+              '<span class="dot"></span>' +
+            '</label>' +
+            '<div class="menu-cell">' +
+              '<button class="menu-trigger" type="button" data-menu-id="' + order.id + '">⋮</button>' +
+              '<div class="menu-popover" id="menu-' + order.id + '">' +
+                '<button type="button" data-edit-id="' + order.id + '">Editar NIC</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' + noteMarkup(order.note) +
+      "</td>" +
+      "<td>" + escapeHtml(order.type) + "</td>" +
+      "<td>" + statePillMarkup(order.status) + overdueMarkup(order) + "</td>" +
+      "<td>" + formatDateTime(order.createdAt) + "</td>" +
+      "<td>" + formatDateTime(order.generatedAt) + "</td>" +
+      "<td>" + formatDateTime(order.dispatchedAt) + "</td>" +
+      "<td>" + actionButtonsMarkup(order) + "</td>" +
+      "</tr>"
+    );
+  }
+
+  function actionButtonsMarkup(order) {
+    var buttons = [];
+    if (order.status === "waiting") {
+      buttons.push('<button class="button warning small" type="button" data-order-action="generate" data-id="' + order.id + '">Generar</button>');
+    }
+    if (order.status === "generated" || order.status === "pending") {
+      buttons.push('<button class="button success small" type="button" data-order-action="dispatch" data-id="' + order.id + '">Despachar</button>');
+    }
+    buttons.push('<button class="button danger small" type="button" data-order-action="delete" data-id="' + order.id + '">Eliminar</button>');
+    return '<div class="row-actions">' + buttons.join("") + "</div>";
+  }
+
+  function statusCountMarkup(status, count) {
+    return (
+      '<div class="status-count ' + STATUSES[status].className + '">' +
+      "<strong>" + count + "</strong>" +
+      "<span>" + STATUSES[status].label + "</span>" +
+      "</div>"
+    );
+  }
+
+  function activeListMarkup(activeOrders) {
+    if (!activeOrders.length) {
+      return '<div class="empty-mini">Sin ordenes activas.</div>';
+    }
+
+    return (
+      '<ul class="active-list">' +
+      activeOrders.map(function (order) {
+        return (
+          "<li>" +
+          '<span class="nic">' + escapeHtml(order.nic) + "</span>" +
+          '<span class="time">' + STATUSES[order.status].label + "</span>" +
+          "</li>"
+        );
+      }).join("") +
+      "</ul>"
+    );
+  }
+
+  function statePillMarkup(status) {
+    return '<span class="state-pill ' + STATUSES[status].className + '">' + STATUSES[status].label + "</span>";
+  }
+
+  function noteMarkup(note) {
+    if (!note) {
+      return "";
+    }
+    return '<span class="note-line">' + escapeHtml(note) + "</span>";
+  }
+
+  function overdueMarkup(order) {
+    if (order.status !== "generated" || !order.generatedAt) {
+      return "";
+    }
+
+    var remaining = TWO_HOURS - (Date.now() - new Date(order.generatedAt).getTime());
+    if (remaining <= 0) {
+      return "";
+    }
+
+    return '<span class="note-line">Pendiente en ' + formatDuration(remaining) + "</span>";
+  }
+
+  function exportDailyPdf() {
+    expireGeneratedOrders();
+    var date = els.filterDate.value || getDateKey(new Date());
+    var createdOnDate = orders.filter(function (order) {
+      return hasSameDateKey(order.createdAt, date);
+    });
+    var dispatched = orders
+      .filter(function (order) {
+        return order.dispatchedAt && hasSameDateKey(order.dispatchedAt, date);
+      })
+      .sort(function (a, b) {
+        return new Date(a.dispatchedAt).getTime() - new Date(b.dispatchedAt).getTime();
+      });
+
+    var byBrigade = countBy(dispatched, "brigade");
+    var byType = countBy(dispatched, "type");
+    var notDispatched = orders.filter(function (order) {
+      return !order.dispatchedAt && hasSameDateKey(order.createdAt, date);
+    });
+    var notDispatchedByBrigade = countBy(notDispatched, "brigade");
+    var generatedAt = new Date();
+
+    els.printReport.innerHTML =
+      "<h1>Reporte diario de ordenes</h1>" +
+      '<div class="report-meta">' +
+      '<div class="report-box"><strong>Fecha del reporte</strong><br>' + formatDateOnly(date) + "</div>" +
+      '<div class="report-box"><strong>Hora de generacion</strong><br>' + formatTime(generatedAt.toISOString()) + "</div>" +
+      '<div class="report-box"><strong>Creadas</strong><br>' + createdOnDate.length + "</div>" +
+      '<div class="report-box"><strong>Despachadas</strong><br>' + dispatched.length + "</div>" +
+      '<div class="report-box"><strong>No despachadas</strong><br>' + notDispatched.length + "</div>" +
+      "</div>" +
+      "<h2>Conteo por brigada</h2>" +
+      reportCountTable(["Brigada", "Despachadas"], byBrigade, BRIGADES) +
+      "<h2>Ordenes no despachadas por brigada</h2>" +
+      reportCountTable(["Brigada", "No despachadas"], notDispatchedByBrigade, BRIGADES) +
+      "<h2>Listado de ordenes no despachadas</h2>" +
+      reportOrdersTable(notDispatched, false) +
+      '<p><strong>Total no despachadas:</strong> ' + notDispatched.length + " ordenes no despachadas.</p>" +
+      "<h2>Listado de ordenes despachadas</h2>" +
+      reportOrdersTable(dispatched, true) +
+      '<p><strong>Total final:</strong> ' + dispatched.length + " ordenes despachadas.</p>";
+
+    els.printReport.setAttribute("aria-hidden", "false");
+    document.body.classList.add("printing");
+
+    setTimeout(function () {
+      window.print();
+    }, 120);
+  }
+
+  function reportCountTable(headers, counts, preferredOrder) {
+    var keys = preferredOrder.filter(function (key) {
+      return counts[key];
+    });
+
+    Object.keys(counts).forEach(function (key) {
+      if (keys.indexOf(key) === -1) {
+        keys.push(key);
+      }
+    });
+
+    if (!keys.length) {
+      return "<p>No hay datos para esta fecha.</p>";
+    }
+
+    return (
+      "<table><thead><tr><th>" + headers[0] + "</th><th>" + headers[1] + "</th></tr></thead><tbody>" +
+      keys.map(function (key) {
+        return "<tr><td>" + escapeHtml(key) + "</td><td>" + counts[key] + "</td></tr>";
+      }).join("") +
+      "</tbody></table>"
+    );
+  }
+
+  function reportOrdersTable(orders, isDispatched) {
+    if (!orders.length) {
+      return isDispatched ? "<p>No hay ordenes despachadas en esta fecha.</p>" : "<p>No hay ordenes no despachadas en esta fecha.</p>";
+    }
+
+    var dateHeader = isDispatched ? "Fecha" : "Fecha de creación";
+    var timeHeader = isDispatched ? "Hora de despacho" : "Hora de creación";
+
+    return (
+      "<table><thead><tr><th>NIC</th><th>Brigada</th><th>Tipo</th><th>" + dateHeader + "</th><th>" + timeHeader + "</th></tr></thead><tbody>" +
+      orders.map(function (order) {
+        var timestamp = isDispatched ? order.dispatchedAt : order.createdAt;
+        return (
+          "<tr>" +
+          "<td>" + escapeHtml(order.nic) + "</td>" +
+          "<td>" + escapeHtml(order.brigade) + "</td>" +
+          "<td>" + escapeHtml(order.type) + "</td>" +
+          "<td>" + formatDateOnly(getDateKey(timestamp)) + "</td>" +
+          "<td>" + formatTime(timestamp) + "</td>" +
+          "</tr>"
+        );
+      }).join("") +
+      "</tbody></table>"
+    );
+  }
+
+  function clearFilters() {
+    els.searchInput.value = "";
+    els.filterBrigade.value = "";
+    els.filterStatus.value = "";
+    els.filterType.value = "";
+    els.filterDate.value = "";
+    render();
+  }
+
+  function countByStatus(list) {
+    return list.reduce(function (acc, order) {
+      var key = order && order.status ? order.status : "waiting";
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, { waiting: 0, generated: 0, dispatched: 0, pending: 0 });
+  }
+
+  function normalizeOrderDateValue(value) {
+    if (!value) {
+      return "";
+    }
+    var date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+    return date.toISOString();
+  }
+
+  function normalizeOrder(order) {
+    if (!order || typeof order !== "object") {
+      return order;
+    }
+
+    order.selected = Boolean(order.selected);
+
+    if (!order.createdAt) {
+      order.createdAt = new Date().toISOString();
+    } else {
+      order.createdAt = normalizeOrderDateValue(order.createdAt);
+    }
+
+    order.generatedAt = normalizeOrderDateValue(order.generatedAt);
+    order.pendingAt = normalizeOrderDateValue(order.pendingAt);
+    order.dispatchedAt = normalizeOrderDateValue(order.dispatchedAt);
+    return order;
+  }
+
+  function hasSameDateKey(value, dateKey) {
+    if (!dateKey) {
+      return false;
+    }
+    return getDateKey(value) === dateKey;
+  }
+
+  function openStatusDialog(label) {
+    var title = label;
+    var list = [];
+    var total = 0;
+    var filtered = [];
+    var today = getDateKey(new Date());
+
+    if (label === 'En espera' || label === 'Generadas' || label === 'Despachadas' || label === 'Pendientes') {
+      var keyMap = { 'En espera': 'waiting', 'Generadas': 'generated', 'Despachadas': 'dispatched', 'Pendientes': 'pending' };
+      var key = keyMap[label];
+      filtered = orders.filter(function (o) { return o.status === key; });
+    } else if (label === 'Creadas hoy') {
+      filtered = orders.filter(function (o) { return hasSameDateKey(o.createdAt, today); });
+    } else if (label === 'Despachadas hoy') {
+      filtered = orders.filter(function (o) { return o.dispatchedAt && hasSameDateKey(o.dispatchedAt, today); });
+    }
+
+    total = filtered.length;
+    var byBrigade = countBy(filtered, 'brigade');
+    list = Object.keys(byBrigade).sort().map(function (b) { return { brigade: b, count: byBrigade[b] }; });
+
+    var body = '<p><strong>Total:</strong> ' + total + '</p>';
+    if (!list.length) {
+      body += '<p>No hay brigadas con ordenes para este conteo.</p>';
+    } else {
+      body += '<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;border-bottom:1px solid var(--line)">Brigada</th><th style="text-align:right;padding:8px;border-bottom:1px solid var(--line)">Cantidad</th></tr></thead><tbody>' +
+        list.map(function (r) {
+          return '<tr><td style="padding:8px">' + escapeHtml(r.brigade) + '</td><td style="padding:8px;text-align:right">' + r.count + '</td></tr>';
+        }).join('') +
+        '</tbody></table>';
+    }
+
+    els.statusDialogTitle.textContent = title;
+    els.statusDialogBody.innerHTML = body;
+    els.statusDialog.showModal();
+  }
+
+  function countBy(list, key) {
+    return list.reduce(function (acc, item) {
+      var value = item[key] || "Sin dato";
+      acc[value] = (acc[value] || 0) + 1;
+      return acc;
+    }, {});
+  }
+
+  function compareOperationalPriority(a, b) {
+    var priority = { pending: 0, generated: 1, waiting: 2, dispatched: 3 };
+    var statusDiff = priority[a.status] - priority[b.status];
+    if (statusDiff !== 0) {
+      return statusDiff;
+    }
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  }
+
+  function findOrder(id) {
+    return orders.find(function (order) {
+      return order.id === id;
+    });
+  }
+
+  function addHistory(order, status, at, label) {
+    if (!Array.isArray(order.history)) {
+      order.history = [];
+    }
+    order.history.push({ status: status, at: at, label: label });
+  }
+
+  function loadOrders() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        return [];
+      }
+      var parsed = JSON.parse(raw);
+      var data = Array.isArray(parsed) ? parsed : [];
+      return data.map(normalizeOrder);
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  }
+
+  function saveOrders() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(orders.map(normalizeOrder)));
+  }
+
+  function showMessage(message, type) {
+    els.formMessage.textContent = message;
+    els.formMessage.className = "form-message " + type;
+  }
+
+  function optionMarkup(value) {
+    return '<option value="' + escapeHtml(value) + '">' + escapeHtml(value) + "</option>";
+  }
+
+  function normalizeNic(value) {
+    return String(value || "").trim().toUpperCase();
+  }
+
+  function makeId() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      return window.crypto.randomUUID();
+    }
+    return "id-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+  }
+
+  function getDateKey(value) {
+    if (!value) {
+      return "";
+    }
+
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return value;
+    }
+
+    var date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+    var month = String(date.getMonth() + 1).padStart(2, "0");
+    var day = String(date.getDate()).padStart(2, "0");
+    return date.getFullYear() + "-" + month + "-" + day;
+  }
+
+  function formatDateTime(value) {
+    if (!value) {
+      return "-";
+    }
+    return new Intl.DateTimeFormat("es-DO", {
+      dateStyle: "short",
+      timeStyle: "short"
+    }).format(new Date(value));
+  }
+
+  function formatDateOnly(dateKey) {
+    if (!dateKey) {
+      return "-";
+    }
+    var parts = dateKey.split("-");
+    if (parts.length !== 3) {
+      return dateKey;
+    }
+    return parts[2] + "/" + parts[1] + "/" + parts[0];
+  }
+
+  function formatTime(value) {
+    if (!value) {
+      return "-";
+    }
+    return new Intl.DateTimeFormat("es-DO", {
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(new Date(value));
+  }
+
+  function formatDuration(milliseconds) {
+    var totalMinutes = Math.max(0, Math.ceil(milliseconds / 60000));
+    var hours = Math.floor(totalMinutes / 60);
+    var minutes = totalMinutes % 60;
+    if (hours > 0) {
+      return hours + "h " + minutes + "m";
+    }
+    return minutes + "m";
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  init();
+})();
+
+</script>
+  </body>
+</html>
